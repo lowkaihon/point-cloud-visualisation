@@ -28,7 +28,7 @@ MAX_VOXELS = 40000
 
 
 def main() -> int:
-    bin_path = REPO_ROOT / "0000000001.bin"
+    bin_path = REPO_ROOT / "data" / "0000000001.bin"
     pts = np.fromfile(bin_path, dtype=np.float32).reshape(-1, 4)
     rng = COORS_RANGE
     mask = (

@@ -38,7 +38,7 @@ def point_range_filter(pts: np.ndarray, rng: list[float]) -> np.ndarray:
 
 
 def main() -> int:
-    bin_path = REPO_ROOT / "0000000001.bin"
+    bin_path = REPO_ROOT / "data" / "0000000001.bin"
     ckpt_path = THIRD_PARTY / "pretrained" / "epoch_160.pth"
     out_path = REPO_ROOT / "outputs" / "detections_dl.json"
     out_path.parent.mkdir(exist_ok=True)

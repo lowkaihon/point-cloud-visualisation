@@ -11,10 +11,11 @@ dist/
 .venv/
 .env
 .env.*
+.claude/
 memory/
 archive/
 brief.pdf
-0000000001.bin
+data/
 SPEC.md
 
 # --- Project-specific ---
