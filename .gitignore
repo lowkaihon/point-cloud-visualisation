@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.venv/
+.env
+.env.*
+memory/
+archive/
+brief.pdf
+0000000001.bin
+SPEC.md
+
+# --- Project-specific ---
+# Generated artefacts (re-created by run.py)
+outputs/
+
+# --- Vendored third_party build artefacts ---
+# Numba cache + any leftover compiled extensions
+third_party/**/__pycache__/
+third_party/**/*.so
+third_party/**/*.pyd
+third_party/**/build/
