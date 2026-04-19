@@ -10,8 +10,7 @@ A combined visualization shows both, honestly surfacing what each technique
 can and cannot claim.
 
 **Dataset:** a single KITTI-format Velodyne `.bin` file
-(`data/0000000001.bin`, 125 826 points, `(x, y, z, intensity)` float32). The
-brief called the format "xyz" — it is actually KITTI `.bin`.
+(`data/0000000001.bin`, 125 826 points, `(x, y, z, intensity)` float32). The provided file is KITTI-format Velodyne .bin (X, Y, Z, intensity); XYZ coordinates are extracted for clustering, all four channels feed the DL model..
 
 ## How to run
 
@@ -80,7 +79,7 @@ view angles are configured via `views/*.json` captured interactively — see
 Verified numbers on `0000000001.bin`: 68 clusters survive the §6.3 geometric
 filter; PointPillars' two-pass inference yields ≈35 raw detections (pass A
 ≈23 front-hemisphere, pass B ≈12 rear-hemisphere), 10 of which pass the
-`score >= 0.3` threshold. Top detection: Pedestrian 0.87 at (+9.13, -5.65, -1.46).
+`score >= 0.3` threshold. Top detection: Pedestrian 0.87 at (+9.13, -5.65, -0.55).
 
 ## Limitations
 
@@ -98,6 +97,12 @@ filter; PointPillars' two-pass inference yields ≈35 raw detections (pass A
   *every* entity; only the classifiable ones get a named class. Note that
   KITTI's "Cyclist" means rider + bicycle together — an empty bike rack is
   genuinely OOV rather than a missed Cyclist.
+- **Edge-of-ROI DL reliability:** 5 `Car` detections in
+  `detections_dl.json` sit at `|x| > 35m` with scores 0.30-0.66. Without
+  KITTI labels for this frame they cannot be confirmed true/false
+  positives; they may be genuine parked vehicles or model noise in sparse
+  lateral returns near the §7.3.1 uncovered wedge. The score threshold is
+  held at 0.3 rather than tuned to hide them.
 - **Single frame:** no temporal tracking, no velocity estimation.
 - **Clustering has no classification:** the §6.3 geometric filter removes
   obvious non-entities (walls, ground stripes) but does not attempt to name

@@ -63,12 +63,16 @@ def _infer_once(
     dets: list[dict] = []
     for i in range(len(scores)):
         cls = LABEL2CLASS.get(int(labels[i]), f"cls_{int(labels[i])}")
+        # PointPillars emits z as the bottom-face centroid (see
+        # third_party/PointPillars/misc/log.md:57 and anchors.py:106);
+        # §5 schema wants box centroid, so lift by dz/2.
+        z_center = float(boxes[i, 2]) + float(boxes[i, 5]) / 2.0
         dets.append(
             make_detection(
                 id=id_offset + i,
                 label=cls,
                 score=float(scores[i]),
-                center=boxes[i, :3],
+                center=(float(boxes[i, 0]), float(boxes[i, 1]), z_center),
                 extent=boxes[i, 3:6],
                 yaw=float(boxes[i, 6]),
                 num_points=0,  # PointPillars does not emit per-detection point counts
@@ -108,9 +112,9 @@ def _sanity_checks(dets_a: list[dict], dets_b: list[dict], score_thresh: float) 
         if not zs:
             continue
         mz = float(np.median(zs))
-        assert -2.5 <= mz <= 0.0, (
+        assert -2.5 <= mz <= 1.0, (
             f"Pass {name} median detection z={mz:.2f} outside expected "
-            "[-2.5, 0.0]m. Likely coordinate frame mismatch or buggy "
+            "[-2.5, 1.0]m. Likely coordinate frame mismatch or buggy "
             "pass-B rotate-back (check x/y sign flips and yaw+pi)."
         )
 

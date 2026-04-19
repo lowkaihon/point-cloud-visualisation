@@ -17,6 +17,7 @@ archive/
 brief.pdf
 data/
 SPEC.md
+JD.md
 
 # --- Project-specific ---
 # Generated artefacts (re-created by run.py)
