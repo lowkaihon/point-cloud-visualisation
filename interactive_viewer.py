@@ -14,29 +14,25 @@ Mouse: left-drag rotate, right-drag pan, scroll zoom.
 Exit: Q / Esc / close window.
 
 Usage:
-    python scripts/interactive_viewer.py
-    python scripts/interactive_viewer.py --no-boxes
-    python scripts/interactive_viewer.py --raw
+    python interactive_viewer.py
+    python interactive_viewer.py --no-boxes
+    python interactive_viewer.py --raw
 """
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 import matplotlib.cm as cm
 import numpy as np
 import open3d as o3d
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT))
+import preprocess
+from io_utils import load_bin, read_detections_json
 
-import preprocess  # noqa: E402
-from io_utils import load_bin, read_detections_json  # noqa: E402
-
-BIN_PATH = REPO_ROOT / "data" / "0000000001.bin"
-CLUSTERING_JSON = REPO_ROOT / "outputs" / "detections_clustering.json"
-DL_JSON = REPO_ROOT / "outputs" / "detections_dl.json"
+BIN_PATH = Path("data/0000000001.bin")
+CLUSTERING_JSON = Path("outputs/detections_clustering.json")
+DL_JSON = Path("outputs/detections_dl.json")
 WIN_W, WIN_H = 1920, 1080
 HEIGHT_ABOVE_PLANE = 0.3  # matches preprocess.HEIGHT_ABOVE_PLANE
 
@@ -48,30 +44,41 @@ CLASS_COLOR = {
 }
 CLUSTER_OUTLINE = (1.0, 0.85, 0.2)  # warm yellow — pops against grey cloud
 
+# 12 edges of a box: 4 bottom, 4 top, 4 vertical risers.
+BOX_EDGES = [
+    [0, 1], [1, 2], [2, 3], [3, 0],
+    [4, 5], [5, 6], [6, 7], [7, 4],
+    [0, 4], [1, 5], [2, 6], [3, 7],
+]
+
+
+def _rotz(yaw: float) -> np.ndarray:
+    """3x3 rotation matrix about Z by `yaw` radians."""
+    c, s = np.cos(yaw), np.sin(yaw)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
+def _normalize(values: np.ndarray) -> np.ndarray:
+    """Rescale to [0, 1] with a floor on the range to avoid divide-by-zero."""
+    return (values - values.min()) / max(float(np.ptp(values)), 1e-6)
+
 
 def _det_to_lineset(det: dict, color: tuple[float, float, float]) -> o3d.geometry.LineSet:
     """12-edge box from a detection dict (center/extent/yaw, rotation about Z)."""
     cx, cy, cz = det["center"]
     dx, dy, dz = det["extent"]
-    yaw = det["yaw"]
+    hx, hy, hz = dx / 2, dy / 2, dz / 2
 
     local = np.array([
-        [-dx / 2, -dy / 2, -dz / 2], [dx / 2, -dy / 2, -dz / 2],
-        [dx / 2, dy / 2, -dz / 2], [-dx / 2, dy / 2, -dz / 2],
-        [-dx / 2, -dy / 2, dz / 2], [dx / 2, -dy / 2, dz / 2],
-        [dx / 2, dy / 2, dz / 2], [-dx / 2, dy / 2, dz / 2],
+        [-hx, -hy, -hz], [hx, -hy, -hz], [hx, hy, -hz], [-hx, hy, -hz],
+        [-hx, -hy,  hz], [hx, -hy,  hz], [hx, hy,  hz], [-hx, hy,  hz],
     ])
-    cos_y, sin_y = np.cos(yaw), np.sin(yaw)
-    R = np.array([[cos_y, -sin_y, 0.0], [sin_y, cos_y, 0.0], [0.0, 0.0, 1.0]])
-    corners = local @ R.T + np.array([cx, cy, cz])
+    corners = local @ _rotz(det["yaw"]).T + np.array([cx, cy, cz])
 
-    edges = [[0, 1], [1, 2], [2, 3], [3, 0],
-             [4, 5], [5, 6], [6, 7], [7, 4],
-             [0, 4], [1, 5], [2, 6], [3, 7]]
     ls = o3d.geometry.LineSet()
     ls.points = o3d.utility.Vector3dVector(corners)
-    ls.lines = o3d.utility.Vector2iVector(edges)
-    ls.colors = o3d.utility.Vector3dVector([list(color)] * len(edges))
+    ls.lines = o3d.utility.Vector2iVector(BOX_EDGES)
+    ls.colors = o3d.utility.Vector3dVector([list(color)] * len(BOX_EDGES))
     return ls
 
 
@@ -103,8 +110,7 @@ def main() -> int:
 
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(xyz)
-    norm = (intensity - intensity.min()) / max(float(np.ptp(intensity)), 1e-6)
-    colors = cm.viridis(norm)[:, :3]
+    colors = cm.viridis(_normalize(intensity))[:, :3]
     pcd.colors = o3d.utility.Vector3dVector(colors)
 
     geometries: list = [pcd]

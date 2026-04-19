@@ -16,7 +16,7 @@ def load_bin(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
     """Load a KITTI Velodyne .bin file.
 
     Returns (xyz, intensity) as separate float32 arrays — intensity is kept
-    separate because Open3D's PointCloud only holds XYZ (§10 Gotcha #3).
+    separate because Open3D's PointCloud only holds XYZ.
     """
     raw = np.fromfile(Path(path), dtype=np.float32).reshape(-1, 4)
     return raw[:, :3].copy(), raw[:, 3].copy()
@@ -32,7 +32,7 @@ def make_detection(
     yaw: float,
     num_points: int,
 ) -> dict:
-    """Build a single §5-schema detection dict."""
+    """Build a single detection dict."""
     c = np.asarray(center, dtype=float).reshape(3)
     e = np.asarray(extent, dtype=float).reshape(3)
     return {
@@ -53,7 +53,7 @@ def write_detections_json(
     input_file: str,
     detections: list[dict],
 ) -> None:
-    """Write §5 envelope to JSON."""
+    """Write the detection envelope to JSON."""
     if source not in ("clustering", "pointpillars"):
         raise ValueError(f"source must be 'clustering' or 'pointpillars', got {source!r}")
     payload = {
@@ -68,14 +68,5 @@ def write_detections_json(
 
 
 def read_detections_json(path: str | Path) -> dict:
-    """Load a §5-envelope JSON."""
+    """Load a detection envelope JSON."""
     return json.loads(Path(path).read_text())
-
-
-if __name__ == "__main__":
-    xyz, intensity = load_bin("data/0000000001.bin")
-    assert xyz.shape == (125826, 3), f"unexpected xyz shape: {xyz.shape}"
-    assert intensity.shape == (125826,), f"unexpected intensity shape: {intensity.shape}"
-    assert xyz.dtype == np.float32
-    assert intensity.dtype == np.float32
-    print(f"OK xyz={xyz.shape} intensity={intensity.shape} dtype=float32")

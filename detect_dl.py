@@ -3,7 +3,7 @@
 Framework: PyTorch 2 CPU. Model vendored under third_party/PointPillars.
 Two-pass 180° Z-rotation for 360° surveillance coverage (KITTI's training
 ROI covers the front hemisphere only). Writes score-filtered detections
-to outputs/detections_dl.json per the §5 schema.
+to outputs/detections_dl.json per the detection JSON schema.
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ if str(THIRD_PARTY) not in sys.path:
 
 from pointpillars.model import PointPillars  # noqa: E402
 
-# §7.3 — KITTI front-facing training ROI (applied per pass).
+# KITTI front-facing training ROI (applied per pass).
 KITTI_RANGE = (0.0, -39.68, -3.0, 69.12, 39.68, 1.0)
 LABEL2CLASS = {0: "Pedestrian", 1: "Cyclist", 2: "Car"}
 DEFAULT_BIN = Path("data/0000000001.bin")
@@ -52,7 +52,7 @@ def _kitti_range_mask(pts: np.ndarray) -> np.ndarray:
 def _infer_once(
     model: PointPillars, pts: np.ndarray, device: torch.device, id_offset: int = 0
 ) -> list[dict]:
-    """Single forward pass. Returns list of §5-schema dicts (no score filter)."""
+    """Single forward pass. Returns list of detection dicts (no score filter)."""
     pts_in = pts[_kitti_range_mask(pts)]
     pc = torch.from_numpy(pts_in).to(device)
     with torch.no_grad():
@@ -62,19 +62,19 @@ def _infer_once(
     scores = np.asarray(result["scores"])
     dets: list[dict] = []
     for i in range(len(scores)):
-        cls = LABEL2CLASS.get(int(labels[i]), f"cls_{int(labels[i])}")
-        # PointPillars emits z as the bottom-face centroid (see
-        # third_party/PointPillars/misc/log.md:57 and anchors.py:106);
-        # §5 schema wants box centroid, so lift by dz/2.
-        z_center = float(boxes[i, 2]) + float(boxes[i, 5]) / 2.0
+        # PointPillars box format: (x, y, z_bottom, dx, dy, dz, yaw).
+        cx, cy, z_bottom, dx, dy, dz, yaw = boxes[i]
+        # Schema wants the geometric centroid, so lift by dz/2.
+        z_center = z_bottom + dz / 2.0
+        label = LABEL2CLASS.get(int(labels[i]), f"cls_{int(labels[i])}")
         dets.append(
             make_detection(
                 id=id_offset + i,
-                label=cls,
-                score=float(scores[i]),
-                center=(float(boxes[i, 0]), float(boxes[i, 1]), z_center),
-                extent=boxes[i, 3:6],
-                yaw=float(boxes[i, 6]),
+                label=label,
+                score=scores[i],
+                center=(cx, cy, z_center),
+                extent=(dx, dy, dz),
+                yaw=yaw,
                 num_points=0,  # PointPillars does not emit per-detection point counts
             )
         )
@@ -89,12 +89,14 @@ def _rotate_pts_180z(pts: np.ndarray) -> np.ndarray:
     return out
 
 
-def _rotate_det_back(det: dict) -> dict:
-    """Inverse of the 180° Z rotation (the rotation is self-inverse)."""
-    det["center"][0] = -det["center"][0]
-    det["center"][1] = -det["center"][1]
-    det["yaw"] = float((det["yaw"] + np.pi) % (2 * np.pi))
-    return det
+def _rotate_detection_180z(det: dict) -> dict:
+    """Undo the 180° Z pre-rotation applied to pass-B points (self-inverse)."""
+    cx, cy, cz = det["center"]
+    return {
+        **det,
+        "center": [-cx, -cy, cz],
+        "yaw": float((det["yaw"] + np.pi) % (2 * np.pi)),
+    }
 
 
 def run(
@@ -119,7 +121,7 @@ def run(
     # Pass B (rear hemisphere via 180° Z rotation)
     pts_rot = _rotate_pts_180z(pts)
     dets_b_raw = _infer_once(model, pts_rot, device, id_offset=len(dets_a))
-    dets_b = [_rotate_det_back(d) for d in dets_b_raw]
+    dets_b = [_rotate_detection_180z(d) for d in dets_b_raw]
     print(f"Pass B: {len(dets_b)} detections (after rotate-back)")
 
     raw = dets_a + dets_b

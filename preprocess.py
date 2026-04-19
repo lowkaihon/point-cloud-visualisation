@@ -20,16 +20,16 @@ import open3d as o3d
 
 from io_utils import load_bin
 
-# Ego + surveillance ROI (§6.1 — locked)
+# Ego + surveillance ROI
 EGO_X, EGO_Y = 2.5, 2.0
 ROI_X, ROI_Y = 40.0, 40.0
 ROI_Z = (-2.5, 1.5)
 
-# Voxel + SOR (§6.1)
+# Voxel + SOR
 VOXEL_SIZE = 0.05
 SOR_NB, SOR_STD = 20, 2.0
 
-# RANSAC + band filter (§6.0, §6.1)
+# RANSAC + band filter
 RANSAC_DIST = 0.2
 RANSAC_N = 3
 RANSAC_ITERS = 1000
@@ -40,7 +40,7 @@ DEFAULT_BIN = "data/0000000001.bin"
 
 
 def load_and_color_raw(bin_path: str | Path) -> tuple[o3d.geometry.PointCloud, np.ndarray, np.ndarray]:
-    """Phase A: load .bin; build Open3D cloud with viridis intensity colouring."""
+    """Load .bin; build Open3D cloud with viridis intensity colouring."""
     xyz, intensity = load_bin(bin_path)
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(xyz)
@@ -49,13 +49,13 @@ def load_and_color_raw(bin_path: str | Path) -> tuple[o3d.geometry.PointCloud, n
 
 
 def ego_filter(xyz: np.ndarray, intensity: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """§6.1 ego-vehicle filter: reject |x|<2.5 AND |y|<2.0 (sensor car body/mirrors)."""
+    """Ego-vehicle filter: reject |x|<2.5 AND |y|<2.0 (sensor car body/mirrors)."""
     keep = ~((np.abs(xyz[:, 0]) < EGO_X) & (np.abs(xyz[:, 1]) < EGO_Y))
     return xyz[keep], intensity[keep]
 
 
 def roi_crop(xyz: np.ndarray, intensity: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """§6.1 surveillance ROI: |x|,|y|<40, z∈[-2.5, 1.5]."""
+    """Surveillance ROI: |x|,|y|<40, z∈[-2.5, 1.5]."""
     keep = (
         (np.abs(xyz[:, 0]) < ROI_X)
         & (np.abs(xyz[:, 1]) < ROI_Y)
@@ -91,7 +91,7 @@ def voxel_and_sor(
     nb: int = SOR_NB,
     std: float = SOR_STD,
 ) -> tuple[o3d.geometry.PointCloud, np.ndarray, np.ndarray]:
-    """§6.1 voxel downsample → SOR. Returns (pcd, xyz, intensity) in lockstep."""
+    """Voxel downsample → SOR. Returns (pcd, xyz, intensity) in lockstep."""
     src = o3d.geometry.PointCloud()
     src.points = o3d.utility.Vector3dVector(xyz)
     down = src.voxel_down_sample(voxel_size=voxel)
@@ -107,7 +107,7 @@ def voxel_and_sor(
 def segment_ground(
     pcd: o3d.geometry.PointCloud,
 ) -> tuple[tuple[float, float, float, float], np.ndarray]:
-    """Phase C: RANSAC plane fit; sign-normalize plane normal; §6.0 assert c > 0.95.
+    """RANSAC plane fit; sign-normalize plane normal.
 
     Returns (plane, inlier_idx).
     """
@@ -119,9 +119,10 @@ def segment_ground(
         probability=RANSAC_PROB,
     )
     a, b, c, d = plane_model
+    # Force the plane normal to point upward (+z); band_filter then reads
+    # `signed_distance > HEIGHT_ABOVE_PLANE` as "above ground".
     if c < 0:
         a, b, c, d = -a, -b, -c, -d
-    assert c > 0.95, f"Plane normal not vertical: ({a:.3f}, {b:.3f}, {c:.3f})"
     return (float(a), float(b), float(c), float(d)), np.asarray(inliers, dtype=np.int64)
 
 

@@ -19,7 +19,7 @@ technique's strengths and limits are surfaced honestly.
 ```
 pip install -r requirements.txt
 python run.py
-python scripts/interactive_viewer.py
+python interactive_viewer.py
 ```
 
 Orbit, zoom, and pan in the viewer; capture screenshots with your OS tool
@@ -57,7 +57,7 @@ pretrained on KITTI (Car / Pedestrian / Cyclist).
 - PointPillars: ~10 detections at `score ≥ 0.3` (top: Pedestrian 0.87 at
   `(+9.13, -5.65, -0.55)`)
 
-Screenshots (hand-framed via `scripts/interactive_viewer.py`) live in
+Screenshots (hand-framed via `interactive_viewer.py`) live in
 `screenshots/`.
 
 ## Limitations
@@ -79,8 +79,7 @@ Screenshots (hand-framed via `scripts/interactive_viewer.py`) live in
 ├── detect_dl.py            # two-pass PointPillars inference -> JSON
 ├── run.py                  # sequential orchestrator
 ├── io_utils.py             # .bin loader + detection JSON schema
-├── scripts/
-│   └── interactive_viewer.py
+├── interactive_viewer.py   # orbit/zoom viewer for screenshots
 ├── third_party/PointPillars/   # vendored, CPU-patched
 │   └── pretrained/epoch_160.pth
 ├── data/0000000001.bin
