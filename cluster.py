@@ -1,11 +1,13 @@
-"""Geometric clustering (§6.0 phase D, §6.2, §6.3).
+"""Clustering model: DBSCAN (eps=0.3m, min_points=10).
 
-DBSCAN over the objects cloud → per-cluster AABB → geometric filter →
-§5-schema detections in outputs/detections_clustering.json.
+Framework: Open3D (cluster_dbscan, axis-aligned bounding box). Runs DBSCAN
+over the preprocessed objects cloud, computes per-cluster AABBs, applies a
+geometric filter (point-count / volume / extent-ratio) to strip noise and
+wall-scale structures, and writes detections to
+outputs/detections_clustering.json per the §5 schema.
 """
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
 import numpy as np
@@ -24,7 +26,6 @@ FILTER_MAX_VOL = 50.0  # m^3
 FILTER_MAX_RATIO = 15.0  # max_extent / min_extent
 
 DEFAULT_INPUT = Path("data/0000000001.bin")
-DEFAULT_PICKLE = Path("outputs/preprocessed.pkl")
 DEFAULT_OUT = Path("outputs/detections_clustering.json")
 
 
@@ -125,25 +126,19 @@ def build_clustering_detections(
     return detections
 
 
-def _load_objects_xyz(pickle_path: Path) -> np.ndarray:
-    if not pickle_path.exists():
-        raise FileNotFoundError(
-            f"{pickle_path} not found. Run preprocess.py first or pass objects_xyz directly."
-        )
-    with open(pickle_path, "rb") as f:
-        state = pickle.load(f)
-    return state["objects_xyz"]
-
-
 def run(
     objects_xyz: np.ndarray | None = None,
-    pickle_path: Path = DEFAULT_PICKLE,
     out_path: Path = DEFAULT_OUT,
     input_file: str = DEFAULT_INPUT.name,
 ) -> list[dict]:
-    """End-to-end clustering stage."""
+    """End-to-end clustering stage.
+
+    When called standalone (objects_xyz=None), preprocess.run() is invoked
+    inline to produce the objects cloud.
+    """
     if objects_xyz is None:
-        objects_xyz = _load_objects_xyz(pickle_path)
+        import preprocess
+        objects_xyz = preprocess.run()["objects_xyz"]
     labels = dbscan(objects_xyz)
     dets = build_clustering_detections(objects_xyz, labels)
     write_detections_json(

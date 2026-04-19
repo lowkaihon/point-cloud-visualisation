@@ -19,10 +19,6 @@ data/
 SPEC.md
 JD.md
 
-# --- Project-specific ---
-# Generated artefacts (re-created by run.py)
-outputs/
-
 # --- Vendored third_party build artefacts ---
 # Numba cache + any leftover compiled extensions
 third_party/**/__pycache__/

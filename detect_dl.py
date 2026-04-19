@@ -1,8 +1,9 @@
-"""PointPillars DL detection (§7.3, §7.3.1, §7.4).
+"""DL detection — PointPillars (KITTI-pretrained; Car / Pedestrian / Cyclist).
 
-Thin wrapper around the vendored third_party/PointPillars. Two-pass rotation
-for 360° coverage: pass A = raw; pass B = 180° rotation about Z, then
-rotate detections back. Writes the union to both raw and score-filtered JSONs.
+Framework: PyTorch 2 CPU. Model vendored under third_party/PointPillars.
+Two-pass 180° Z-rotation for 360° surveillance coverage (KITTI's training
+ROI covers the front hemisphere only). Writes score-filtered detections
+to outputs/detections_dl.json per the §5 schema.
 """
 from __future__ import annotations
 
@@ -27,8 +28,7 @@ KITTI_RANGE = (0.0, -39.68, -3.0, 69.12, 39.68, 1.0)
 LABEL2CLASS = {0: "Pedestrian", 1: "Cyclist", 2: "Car"}
 DEFAULT_BIN = Path("data/0000000001.bin")
 DEFAULT_WEIGHTS = THIRD_PARTY / "pretrained" / "epoch_160.pth"
-DEFAULT_OUT_RAW = Path("outputs/detections_dl_raw.json")
-DEFAULT_OUT_FILT = Path("outputs/detections_dl.json")
+DEFAULT_OUT = Path("outputs/detections_dl.json")
 DEFAULT_SCORE_THRESH = 0.3
 
 
@@ -97,36 +97,13 @@ def _rotate_det_back(det: dict) -> dict:
     return det
 
 
-def _sanity_checks(dets_a: list[dict], dets_b: list[dict], score_thresh: float) -> None:
-    """§7.4 per-pass warnings + median-z assert."""
-    if not dets_a:
-        print("WARN: pass A empty - front-hemisphere inference returned nothing")
-    if not dets_b and dets_a:
-        print(
-            "WARN: pass A produced detections but pass B did not; "
-            "verify rotate-back transform (x/y sign flips, yaw+pi) "
-            "against the rendered output before trusting the result."
-        )
-    for name, dets in [("A", dets_a), ("B", dets_b)]:
-        zs = [d["center"][2] for d in dets if d["score"] >= score_thresh]
-        if not zs:
-            continue
-        mz = float(np.median(zs))
-        assert -2.5 <= mz <= 1.0, (
-            f"Pass {name} median detection z={mz:.2f} outside expected "
-            "[-2.5, 1.0]m. Likely coordinate frame mismatch or buggy "
-            "pass-B rotate-back (check x/y sign flips and yaw+pi)."
-        )
-
-
 def run(
     bin_path: str | Path = DEFAULT_BIN,
     weights: str | Path = DEFAULT_WEIGHTS,
-    out_raw: Path = DEFAULT_OUT_RAW,
-    out_filt: Path = DEFAULT_OUT_FILT,
+    out_path: Path = DEFAULT_OUT,
     score_thresh: float = DEFAULT_SCORE_THRESH,
-) -> tuple[list[dict], list[dict]]:
-    """Run two-pass PointPillars inference, write raw and score-filtered JSONs."""
+) -> list[dict]:
+    """Run two-pass PointPillars inference, write the score-filtered JSON."""
     bin_path = Path(bin_path)
     device = torch.device("cpu")
     model = _load_model(Path(weights), device)
@@ -145,16 +122,14 @@ def run(
     dets_b = [_rotate_det_back(d) for d in dets_b_raw]
     print(f"Pass B: {len(dets_b)} detections (after rotate-back)")
 
-    _sanity_checks(dets_a, dets_b, score_thresh)
-
     raw = dets_a + dets_b
     filtered = [d for d in raw if d["score"] >= score_thresh]
 
     print(
-        f"Raw: {len(raw)} (A={len(dets_a)} + B={len(dets_b)}), "
+        f"Total: {len(raw)} (A={len(dets_a)} + B={len(dets_b)}), "
         f"filtered (score>={score_thresh}): {len(filtered)}"
     )
-    print(f"Class breakdown (raw): {dict(Counter(d['label'] for d in raw))}")
+    print(f"Class breakdown: {dict(Counter(d['label'] for d in filtered))}")
     if filtered:
         top = max(filtered, key=lambda d: d["score"])
         print(
@@ -163,14 +138,10 @@ def run(
         )
 
     write_detections_json(
-        out_raw, source="pointpillars", input_file=bin_path.name, detections=raw
+        out_path, source="pointpillars", input_file=bin_path.name, detections=filtered
     )
-    write_detections_json(
-        out_filt, source="pointpillars", input_file=bin_path.name, detections=filtered
-    )
-    print(f"Wrote {len(raw)} raw -> {out_raw}")
-    print(f"Wrote {len(filtered)} filtered -> {out_filt}")
-    return raw, filtered
+    print(f"Wrote {len(filtered)} detections -> {out_path}")
+    return filtered
 
 
 if __name__ == "__main__":

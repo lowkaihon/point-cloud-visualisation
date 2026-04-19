@@ -1,11 +1,17 @@
-"""Preprocessing pipeline (§6.0 phases A–C, §6.1).
+"""Preprocessing pipeline for lidar point cloud.
 
-ego removal → ROI crop → voxel → SOR → ground removal (RANSAC + band filter).
-Intensity carried forward as a parallel numpy array per §6.1 / Gotcha #3.
+Framework: Open3D (voxel_down_sample, remove_statistical_outlier, segment_plane).
+Pipeline:
+  1. Ego-vehicle removal — reject points inside the KITTI sensor-car body.
+  2. ROI crop — ±40m surveillance perimeter, z ∈ [-2.5, 1.5]m.
+  3. Voxel downsample (0.05m) — uniform density, ~3-5x speedup.
+  4. Statistical outlier removal — trim atmospheric speckle.
+  5. RANSAC ground-plane fit + signed-distance band filter (0.3m above plane).
+Intensity is carried forward as a parallel numpy array (Open3D's PointCloud
+only stores XYZ).
 """
 from __future__ import annotations
 
-import pickle
 from pathlib import Path
 
 import matplotlib.cm as cm
@@ -31,7 +37,6 @@ RANSAC_PROB = 1.0  # force all iterations (deterministic)
 HEIGHT_ABOVE_PLANE = 0.3
 
 DEFAULT_BIN = "data/0000000001.bin"
-DEFAULT_PICKLE = Path("outputs/preprocessed.pkl")
 
 
 def load_and_color_raw(bin_path: str | Path) -> tuple[o3d.geometry.PointCloud, np.ndarray, np.ndarray]:
@@ -132,17 +137,14 @@ def band_filter(
     return signed > min_height
 
 
-def run(
-    bin_path: str | Path = DEFAULT_BIN,
-    pickle_to: Path | None = DEFAULT_PICKLE,
-) -> dict:
-    """End-to-end preprocess. Returns and optionally pickles intermediate + final clouds.
+def run(bin_path: str | Path = DEFAULT_BIN) -> dict:
+    """End-to-end preprocess. Returns intermediate + final clouds.
 
     Dict keys:
       - raw_xyz, raw_intensity
-      - stage_clouds: dict of stage-name → xyz array (for §8 preprocessing sub-shots)
+      - stage_clouds: dict of stage-name → xyz array
       - objects_xyz, objects_intensity: final objects cloud (input to cluster.py)
-      - ground_xyz: primary RANSAC ground inliers (for viz)
+      - ground_xyz: primary RANSAC ground inliers
       - plane: (a, b, c, d) sign-normalized
     """
     _, raw_xyz, raw_intensity = load_and_color_raw(bin_path)
@@ -175,7 +177,7 @@ def run(
         f"objects kept: {len(objects_xyz)}"
     )
 
-    result = {
+    return {
         "raw_xyz": raw_xyz,
         "raw_intensity": raw_intensity,
         "stage_clouds": {
@@ -188,14 +190,6 @@ def run(
         "ground_xyz": cleaned_xyz[ground_mask],
         "plane": plane,
     }
-
-    if pickle_to is not None:
-        pickle_to.parent.mkdir(parents=True, exist_ok=True)
-        with open(pickle_to, "wb") as f:
-            pickle.dump(result, f)
-        print(f"Pickled preprocessed state -> {pickle_to}")
-
-    return result
 
 
 if __name__ == "__main__":

@@ -1,4 +1,9 @@
-"""I/O helpers: KITTI .bin loader + §5 detection JSON schema."""
+"""I/O helpers — KITTI Velodyne .bin loader + detection JSON schema.
+
+Framework: numpy. JSON envelope used by cluster.py and detect_dl.py:
+  {source, coord_frame, input_file, detections[]}
+Each detection: id, label, score, center, extent, yaw, num_points.
+"""
 from __future__ import annotations
 
 import json
