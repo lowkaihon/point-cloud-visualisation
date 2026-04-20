@@ -28,9 +28,8 @@ import numpy as np
 import open3d as o3d
 
 import preprocess
-from io_utils import load_bin, read_detections_json
+from io_utils import INPUT_FRAME, load_bin, read_detections_json
 
-BIN_PATH = Path("data/0000000001.bin")
 CLUSTERING_JSON = Path("outputs/detections_clustering.json")
 DL_JSON = Path("outputs/detections_dl.json")
 WIN_W, WIN_H = 1920, 1080
@@ -96,10 +95,12 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    xyz, intensity = load_bin(BIN_PATH)
+    xyz, intensity = load_bin(INPUT_FRAME)
     source = "raw"
     if not args.raw:
-        state = preprocess.run()
+        # Re-run inline rather than caching to outputs/: keeps the viewer
+        # self-contained and avoids stale-cache bugs when preprocess.py changes.
+        state = preprocess.run(verbose=False)
         a, b, c, d = state["plane"]
         normal = np.array([a, b, c], dtype=np.float64)
         signed = (xyz @ normal + d) / np.linalg.norm(normal)

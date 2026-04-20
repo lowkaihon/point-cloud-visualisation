@@ -18,7 +18,7 @@ import matplotlib.cm as cm
 import numpy as np
 import open3d as o3d
 
-from io_utils import load_bin
+from io_utils import INPUT_FRAME, load_bin
 
 # Ego + surveillance ROI
 EGO_X, EGO_Y = 2.5, 2.0
@@ -35,8 +35,6 @@ RANSAC_N = 3
 RANSAC_ITERS = 1000
 RANSAC_PROB = 1.0  # force all iterations (deterministic)
 HEIGHT_ABOVE_PLANE = 0.3
-
-DEFAULT_BIN = "data/0000000001.bin"
 
 
 def load_and_color_raw(bin_path: str | Path) -> tuple[o3d.geometry.PointCloud, np.ndarray, np.ndarray]:
@@ -138,7 +136,7 @@ def band_filter(
     return signed > min_height
 
 
-def run(bin_path: str | Path = DEFAULT_BIN) -> dict:
+def run(bin_path: str | Path = INPUT_FRAME, verbose: bool = True) -> dict:
     """End-to-end preprocess. Returns intermediate + final clouds.
 
     Dict keys:
@@ -149,20 +147,25 @@ def run(bin_path: str | Path = DEFAULT_BIN) -> dict:
       - plane: (a, b, c, d) sign-normalized
     """
     _, raw_xyz, raw_intensity = load_and_color_raw(bin_path)
-    print(f"Raw: {len(raw_xyz)} points")
+    if verbose:
+        print(f"Raw: {len(raw_xyz)} points")
 
     ego_xyz, ego_intensity = ego_filter(raw_xyz, raw_intensity)
-    print(f"After ego removal: {len(ego_xyz)} points")
+    if verbose:
+        print(f"After ego removal: {len(ego_xyz)} points")
 
     roi_xyz, roi_intensity = roi_crop(ego_xyz, ego_intensity)
-    print(f"After ROI crop: {len(roi_xyz)} points")
+    if verbose:
+        print(f"After ROI crop: {len(roi_xyz)} points")
 
     cleaned_pcd, cleaned_xyz, cleaned_intensity = voxel_and_sor(roi_xyz, roi_intensity)
-    print(f"After voxel + SOR: {len(cleaned_xyz)} points")
+    if verbose:
+        print(f"After voxel + SOR: {len(cleaned_xyz)} points")
 
     plane, inlier_idx = segment_ground(cleaned_pcd)
     a, b, c, d = plane
-    print(f"Plane: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
+    if verbose:
+        print(f"Plane: {a:.2f}x + {b:.2f}y + {c:.2f}z + {d:.2f} = 0")
 
     ground_mask = np.zeros(len(cleaned_xyz), dtype=bool)
     ground_mask[inlier_idx] = True
@@ -172,11 +175,12 @@ def run(bin_path: str | Path = DEFAULT_BIN) -> dict:
     band_mask = band_filter(remaining_xyz, plane)
     objects_xyz = remaining_xyz[band_mask]
     objects_intensity = remaining_intensity[band_mask]
-    print(
-        f"Primary ground inliers: {int(ground_mask.sum())}, "
-        f"residual stripped: {int((~band_mask).sum())}, "
-        f"objects kept: {len(objects_xyz)}"
-    )
+    if verbose:
+        print(
+            f"Primary ground inliers: {int(ground_mask.sum())}, "
+            f"residual stripped: {int((~band_mask).sum())}, "
+            f"objects kept: {len(objects_xyz)}"
+        )
 
     return {
         "raw_xyz": raw_xyz,

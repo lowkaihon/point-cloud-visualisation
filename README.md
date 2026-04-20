@@ -57,18 +57,44 @@ pretrained on KITTI (Car / Pedestrian / Cyclist).
 - PointPillars: ~10 detections at `score ≥ 0.3` (top: Pedestrian 0.87 at
   `(+9.13, -5.65, -0.55)`)
 
-Screenshots (hand-framed via `interactive_viewer.py`) live in
-`screenshots/`.
+Screenshots hand-framed via `interactive_viewer.py` (orbit / zoom, then `Win+Shift+S`).
+
+![Isometric overview](screenshots/overview_iso.png) <br>
+*Isometric overview — clustering boxes (yellow) + DL boxes (class-coloured) over the raw cloud minus ground; the empty cyan cluster on the right previews the hallucination story below.*
+
+![DBSCAN coloured clusters](screenshots/dbscan.png) <br>
+*Raw DBSCAN output (tab20, noise = black) before the geometric filter. The big orange blob bottom-left is a car over-merged with adjacent structure — filter-dropped, but PointPillars recovers it independently (see car.png). The green vertical stripes in the middle are a row of bicycles, and a small red cluster to the right is a pedestrian — small geometric signatures the filter correctly preserves. The large blue / grey masses along the top edge are wall / facade merges the filter exists to suppress.*
+
+![Car detection](screenshots/car.png) <br>
+*Cyan DL box wraps a car's characteristic ring returns. The bright yellow dots at the bottom are high-intensity reflections off the retroreflective number plate — intensity surfaces fine detail that geometry alone would miss.*
+
+![Pedestrians and adjacent clusters](screenshots/pedestrian_bicycles.png) <br>
+*Two magenta Pedestrian boxes stand beside a row of unlabelled `cluster_N` boxes — adjacent bicycles and wall structures caught by geometry but out-of-vocabulary for PointPillars.*
+
+![Unlabelled bicycles](screenshots/bicycles.png) <br>
+*A parked-bike cluster: DBSCAN produces a yellow box, no DL overlay — static bikes fall outside PointPillars' "Cyclist = person-on-moving-bike" class. Out-of-vocab made visible.*
+
+![Hallucinated cars](screenshots/cars_hallucinated.png) <br>
+*Three confident cyan Car boxes in near-empty regions — PointPillars confabulating on sparse rear-hemisphere returns. Without ground truth there is no automated way to reject these post-inference.*
 
 ## Limitations
 
-- **PointPillars training ROI** — the model was trained on KITTI's front
-  camera frustum. 360° coverage is achieved via a two-pass 180° Z-rotation
-  trick; a thin lateral wedge at `|y| > 40m` remains uncovered.
 - **Class vocabulary** — PointPillars knows Car / Pedestrian / Cyclist
   only. Other entities (vegetation, benches, poles, bike racks) are caught
   by clustering as `cluster_N` rather than by the DL detector.
+- **Heuristic clustering filter** — the geometric thresholds
+  (`max_vol = 50 m³`, `max_ratio = 15`, point-count bounds) are hand-tuned.
+  Wall / facade fragments sitting near those boundaries can survive as
+  unlabelled `cluster_N`, and genuine entities on the wrong side of the
+  cutoff can be dropped.
 - **Single frame** — no temporal tracking, no velocity estimation.
+
+## Discussion
+
+- **Lidar vs 2D cameras.** Depth and metric geometry come for free — boxes are in metres with no monocular ambiguity — but returns are sparse at range and carry no colour / texture semantics, so intensity alone is thin for fine-grained classification.
+- **Complementary pipelines.** DBSCAN catches out-of-vocabulary entities (parked bikes, facades) the DL detector can't name; PointPillars recovers cars whose points got over-merged into filter-dropped blobs. Neither alone covers the scene.
+- **Future work.** Multi-frame temporal tracking + velocity estimation; quantitative evaluation against KITTI ground truth (precision / recall / mAP) to replace heuristic thresholds; a broader-vocab detector (e.g. nuScenes-trained) to shrink the `cluster_N` residue.
+- **Scalability.** Single-frame CPU latency is dominated by PointPillars inference; batching frames or moving to GPU is the obvious lever. Clustering and preprocessing are linear in point count and cheap in comparison.
 
 ## Layout
 

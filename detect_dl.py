@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from io_utils import load_bin, make_detection, write_detections_json
+from io_utils import INPUT_FRAME, load_bin, make_detection, write_detections_json
 
 REPO_ROOT = Path(__file__).resolve().parent
 THIRD_PARTY = REPO_ROOT / "third_party" / "PointPillars"
@@ -26,7 +26,6 @@ from pointpillars.model import PointPillars  # noqa: E402
 # KITTI front-facing training ROI (applied per pass).
 KITTI_RANGE = (0.0, -39.68, -3.0, 69.12, 39.68, 1.0)
 LABEL2CLASS = {0: "Pedestrian", 1: "Cyclist", 2: "Car"}
-DEFAULT_BIN = Path("data/0000000001.bin")
 DEFAULT_WEIGHTS = THIRD_PARTY / "pretrained" / "epoch_160.pth"
 DEFAULT_OUT = Path("outputs/detections_dl.json")
 DEFAULT_SCORE_THRESH = 0.3
@@ -100,7 +99,7 @@ def _rotate_detection_180z(det: dict) -> dict:
 
 
 def run(
-    bin_path: str | Path = DEFAULT_BIN,
+    bin_path: str | Path = INPUT_FRAME,
     weights: str | Path = DEFAULT_WEIGHTS,
     out_path: Path = DEFAULT_OUT,
     score_thresh: float = DEFAULT_SCORE_THRESH,

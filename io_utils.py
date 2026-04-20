@@ -11,6 +11,13 @@ from pathlib import Path
 
 import numpy as np
 
+# First .bin alphabetically in data/, falling back to the provided frame.
+# Replacing the file in data/ re-points the pipeline with no code edits.
+INPUT_FRAME: Path = next(
+    iter(sorted(Path("data").glob("*.bin"))),
+    Path("data/0000000001.bin"),
+)
+
 
 def load_bin(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
     """Load a KITTI Velodyne .bin file.

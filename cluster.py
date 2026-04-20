@@ -13,7 +13,7 @@ from pathlib import Path
 import numpy as np
 import open3d as o3d
 
-from io_utils import make_detection, write_detections_json
+from io_utils import INPUT_FRAME, make_detection, write_detections_json
 
 DIAG_HEADER = f"{'id':>4} {'pts':>6} {'dx':>5} {'dy':>5} {'dz':>5} {'vol':>7} {'cz':>6} passed  reason"
 
@@ -25,7 +25,6 @@ FILTER_MAX_PTS = 5000
 FILTER_MAX_VOL = 50.0  # m^3
 FILTER_MAX_RATIO = 15.0  # max_extent / min_extent
 
-DEFAULT_INPUT = Path("data/0000000001.bin")
 DEFAULT_OUT = Path("outputs/detections_clustering.json")
 
 
@@ -138,7 +137,7 @@ def build_clustering_detections(
 def run(
     objects_xyz: np.ndarray | None = None,
     out_path: Path = DEFAULT_OUT,
-    input_file: str = DEFAULT_INPUT.name,
+    input_file: str = INPUT_FRAME.name,
 ) -> list[dict]:
     """End-to-end clustering stage.
 
