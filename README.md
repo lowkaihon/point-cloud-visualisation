@@ -16,7 +16,10 @@ technique's strengths and limits are surfaced honestly.
 
 ## How to run
 
+Tested on Python 3.12.
+
 ```
+# recommended: run inside a fresh venv
 pip install -r requirements.txt
 python run.py
 python interactive_viewer.py
@@ -25,6 +28,17 @@ python interactive_viewer.py
 Orbit, zoom, and pan in the viewer; capture screenshots with your OS tool
 (Windows `Win+Shift+S`). First-run warm-up: the numba voxelization kernel
 JIT-compiles on first inference (a few seconds).
+
+**Windows note:** if `pip install` fails with
+`OSError: [Errno 2] No such file or directory` on a long `jupyter` /
+`@jupyter-widgets` path (hit via open3d's transitive deps), either extract
+this project to a short path like `C:\lidar\` or enable Windows long paths
+once from an **admin** PowerShell and run `pip install` from that same
+admin session:
+
+```
+Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
+```
 
 ## Pipeline
 
