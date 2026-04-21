@@ -1,6 +1,6 @@
 # Pure-torch replacement for iou3d_module.py — avoids CUDA-only iou3d_op.
 # Original repo's rotated-NMS is replaced with axis-aligned NMS on the BEV
-# envelope. For a single-frame KITTI inference demo with nms_thr=0.01, the
+# envelope. For a single-frame KITTI inference with nms_thr=0.01, the
 # distinction is negligible. Training-time iou functions (boxes_iou_bev,
 # boxes_overlap_bev) are stubbed — they're not called at inference.
 

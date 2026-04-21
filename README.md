@@ -1,8 +1,8 @@
-# Lidar Surveillance Demo
+# Lidar Surveillance Detection
 
 ## Overview
 
-A lidar surveillance demo on a single KITTI Velodyne frame
+A lidar surveillance detection pipeline on a single KITTI Velodyne frame
 (`data/0000000001.bin`, 125 826 points, `(x, y, z, intensity)` float32).
 Two complementary detection pipelines run over the frame:
 
@@ -19,22 +19,18 @@ technique's strengths and limits are surfaced honestly.
 Tested on Python 3.12.
 
 ```
-# recommended: run inside a fresh venv
 pip install -r requirements.txt
 python run.py
 python interactive_viewer.py
 ```
 
 Orbit, zoom, and pan in the viewer; capture screenshots with your OS tool
-(Windows `Win+Shift+S`). First-run warm-up: the numba voxelization kernel
-JIT-compiles on first inference (a few seconds).
+(Windows `Win+Shift+S`). First-run warmup: ~10 s JIT compile.
 
 **Windows note:** if `pip install` fails with
-`OSError: [Errno 2] No such file or directory` on a long `jupyter` /
-`@jupyter-widgets` path (hit via open3d's transitive deps), either extract
-this project to a short path like `C:\lidar\` or enable Windows long paths
-once from an **admin** PowerShell and run `pip install` from that same
-admin session:
+`OSError: [Errno 2] No such file or directory` on a long `jupyter` path
+(open3d transitive dep), enable Windows long paths once from admin
+PowerShell and reopen your terminal:
 
 ```
 Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1
@@ -89,25 +85,25 @@ Screenshots hand-framed via `interactive_viewer.py` (orbit / zoom, then `Win+Shi
 *A parked-bike cluster: DBSCAN produces a yellow box, no DL overlay — static bikes fall outside PointPillars' "Cyclist = person-on-moving-bike" class. Out-of-vocab made visible.*
 
 ![Hallucinated cars](screenshots/cars_hallucinated.png) <br>
-*Three confident cyan Car boxes in near-empty regions — PointPillars confabulating on sparse rear-hemisphere returns. Without ground truth there is no automated way to reject these post-inference.*
+*Three confident cyan Car boxes in near-empty regions — PointPillars hallucinating on sparse rear-hemisphere returns. Without ground truth there is no automated way to reject these post-inference.*
 
 ## Limitations
 
 - **Class vocabulary** — PointPillars knows Car / Pedestrian / Cyclist
-  only. Other entities (vegetation, benches, poles, bike racks) are caught
-  by clustering as `cluster_N` rather than by the DL detector.
+  only. Other entities (e.g. parked bicycles) are caught by clustering
+  as `cluster_N` rather than by the DL detector.
 - **Heuristic clustering filter** — the geometric thresholds
   (`max_vol = 50 m³`, `max_ratio = 15`, point-count bounds) are hand-tuned.
   Wall / facade fragments sitting near those boundaries can survive as
   unlabelled `cluster_N`, and genuine entities on the wrong side of the
   cutoff can be dropped.
-- **Single frame** — no temporal tracking, no velocity estimation.
+- **Single frame** — no temporal tracking across frames.
 
 ## Discussion
 
 - **Lidar vs 2D cameras.** Depth and metric geometry come for free — boxes are in metres with no monocular ambiguity — but returns are sparse at range and carry no colour / texture semantics, so intensity alone is thin for fine-grained classification.
-- **Complementary pipelines.** DBSCAN catches out-of-vocabulary entities (parked bikes, facades) the DL detector can't name; PointPillars recovers cars whose points got over-merged into filter-dropped blobs. Neither alone covers the scene.
-- **Future work.** Multi-frame temporal tracking + velocity estimation; quantitative evaluation against KITTI ground truth (precision / recall / mAP) to replace heuristic thresholds; a broader-vocab detector (e.g. nuScenes-trained) to shrink the `cluster_N` residue.
+- **Complementary pipelines.** DBSCAN catches out-of-vocabulary entities (e.g. parked bicycles) the DL detector can't name; PointPillars recovers cars whose points got over-merged into filter-dropped blobs. Neither alone covers the scene.
+- **Future work.** Temporal tracking across frames; quantitative evaluation against KITTI ground truth (precision / recall / mAP) to replace heuristic thresholds; a broader-vocab detector (e.g. nuScenes-trained) to shrink the `cluster_N` residue.
 - **Scalability.** Single-frame CPU latency is dominated by PointPillars inference; batching frames or moving to GPU is the obvious lever. Clustering and preprocessing are linear in point count and cheap in comparison.
 
 ## Layout
