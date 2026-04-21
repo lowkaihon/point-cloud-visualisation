@@ -28,7 +28,7 @@ import numpy as np
 import open3d as o3d
 
 import preprocess
-from io_utils import INPUT_FRAME, load_bin, read_detections_json
+from data_io import INPUT_FRAME, load_bin, read_detections_json
 
 CLUSTERING_JSON = Path("outputs/detections_clustering.json")
 DL_JSON = Path("outputs/detections_dl.json")

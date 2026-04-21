@@ -79,10 +79,10 @@ Screenshots hand-framed via `interactive_viewer.py` (orbit / zoom, then `Win+Shi
 *Cyan DL box wraps a car's characteristic ring returns. The bright yellow dots at the bottom are high-intensity reflections off the retroreflective number plate — intensity surfaces fine detail that geometry alone would miss.*
 
 ![Pedestrians and adjacent clusters](screenshots/pedestrian_bicycles.png) <br>
-*Two magenta Pedestrian boxes stand beside a row of unlabelled `cluster_N` boxes — adjacent bicycles and wall structures caught by geometry but out-of-vocabulary for PointPillars.*
+*Two magenta Pedestrian boxes stand beside unlabelled cluster_N boxes — parked bicycles (out-of-vocabulary for PointPillars) and wall fragments (filter residue).*
 
 ![Unlabelled bicycles](screenshots/bicycles.png) <br>
-*A parked-bike cluster: DBSCAN produces a yellow box, no DL overlay — static bikes fall outside PointPillars' "Cyclist = person-on-moving-bike" class. Out-of-vocab made visible.*
+*A parked-bike cluster: DBSCAN produces a yellow box, no DL overlay — bikes without riders fall outside PointPillars' "Cyclist" class. Out-of-vocab made visible.*
 
 ![Hallucinated cars](screenshots/cars_hallucinated.png) <br>
 *Three confident cyan Car boxes in near-empty regions — PointPillars hallucinating on sparse rear-hemisphere returns. Without ground truth there is no automated way to reject these post-inference.*
@@ -114,7 +114,7 @@ Screenshots hand-framed via `interactive_viewer.py` (orbit / zoom, then `Win+Shi
 ├── cluster.py              # DBSCAN + AABB + geometric filter -> JSON
 ├── detect_dl.py            # two-pass PointPillars inference -> JSON
 ├── run.py                  # sequential orchestrator
-├── io_utils.py             # .bin loader + detection JSON schema
+├── data_io.py              # .bin loader + detection JSON schema
 ├── interactive_viewer.py   # orbit/zoom viewer for screenshots
 ├── third_party/PointPillars/   # vendored, CPU-patched
 │   └── pretrained/epoch_160.pth

@@ -18,7 +18,7 @@ import matplotlib.cm as cm
 import numpy as np
 import open3d as o3d
 
-from io_utils import INPUT_FRAME, load_bin
+from data_io import INPUT_FRAME, load_bin
 
 # Ego + surveillance ROI
 EGO_X, EGO_Y = 2.5, 2.0

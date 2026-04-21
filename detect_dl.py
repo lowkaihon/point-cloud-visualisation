@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from io_utils import INPUT_FRAME, load_bin, make_detection, write_detections_json
+from data_io import INPUT_FRAME, load_bin, make_detection, write_detections_json
 
 REPO_ROOT = Path(__file__).resolve().parent
 THIRD_PARTY = REPO_ROOT / "third_party" / "PointPillars"
